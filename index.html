@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FCB 自由之城生态</title>
+
+<link rel="icon" href="https://i.imgur.com/4ZkFZ2Y.png">
+<link rel="shortcut icon" href="https://i.imgur.com/4ZkFZ2Y.png">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        primary: '#6366f1',
+        secondary: '#8b5cf6',
+        accent: '#ec4899',
+        dark: '#0c0a20',
+      },
+      fontFamily: {
+        inter: ['Inter', 'system-ui', 'sans-serif'],
+      },
+    }
+  }
+}
+</script>
+
+<style type="text/tailwindcss">
+@layer utilities {
+  .glass {
+    background: rgba(255,255,255,0.03);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .card-hover {
+    transition: all 0.3s;
+  }
+  .card-hover:hover {
+    transform: translateY(-2px);
+    border-color: rgba(99,102,241,0.3);
+  }
+  .btn-primary {
+    background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  }
+  .btn-accent {
+    background: linear-gradient(90deg, #8b5cf6, #ec4899);
+  }
+  .text-gradient {
+    background: linear-gradient(90deg, #c7d2fe, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+</style>
+</head>
+
+<body class="bg-dark text-gray-100 font-inter min-h-screen pb-24">
+<div class="max-w-lg mx-auto px-4 py-8">
+
+  <div class="flex items-center justify-between mb-8">
+    <div class="flex items-center gap-3">
+      <img src="https://i.imgur.com/4ZkFZ2Y.png" 
+           class="w-12 h-12 rounded-full object-cover border-2 border-primary/40" alt="FCB Logo">
+      <div>
+        <h1 class="text-[26px] font-bold text-gradient">FCB 生态系统</h1>
+        <p class="text-gray-400 text-sm mt-1">Free City Beer · 自由之城</p>
+      </div>
+    </div>
+    <button id="connectBtn" class="btn-accent px-5 py-2 rounded-xl text-white font-medium text-sm shadow-lg">
+      连接钱包
+    </button>
+  </div>
+
+  <div class="glass rounded-2xl p-5 mb-6 card-hover">
+    <div class="text-lg font-semibold mb-4 flex items-center">
+      <i class="fa fa-user-circle text-primary mr-2"></i>基础信息
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div class="glass p-3 rounded-xl">
+        <div class="text-xs text-gray-400">FCB 余额</div>
+        <div id="fcbBalance" class="text-base font-semibold mt-1">0.00</div>
+      </div>
+      <div class="glass p-3 rounded-xl">
+        <div class="text-xs text-gray-400">我的等级</div>
+        <div id="userLevel" class="text-base font-semibold mt-1">Member</div>
+      </div>
+      <div class="glass p-3 rounded-xl">
+        <div class="text-xs text-gray-400">我的权重</div>
+        <div id="userWeight" class="text-base font-semibold mt-1">0</div>
+      </div>
+      <div class="glass p-3 rounded-xl">
+        <div class="text-xs text-gray-400">未领取分红</div>
+        <div id="pendingDiv" class="text-base font-semibold mt-1 text-emerald-400">0.00 USDT</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="glass rounded-2xl p-5 mb-6 card-hover">
+    <div class="text-lg font-semibold mb-4 flex items-center">
+      <i class="fa fa-link text-primary mr-2"></i>我的推荐
+    </div>
+    <div class="glass p-3 rounded-xl mb-3">
+      <div class="text-xs text-gray-400">推荐人</div>
+      <div id="myReferrer" class="text-sm truncate">—</div>
+    </div>
+    <div class="glass p-3 rounded-xl mb-3">
+      <input id="refInput" class="w-full bg-transparent outline-none text-sm" placeholder="输入推荐人地址进行绑定">
+    </div>
+    <button id="bindRefBtn" class="btn-primary w-full py-2 rounded-xl text-white font-medium mb-3">绑定推荐人</button>
+    <div class="glass p-3 rounded-xl">
+      <div class="text-xs text-gray-400">推荐链接</div>
+      <div id="myLink" class="text-sm truncate text-primary cursor-pointer">点击复制</div>
+    </div>
+  </div>
+
+  <div class="glass rounded-2xl p-5 mb-6 card-hover">
+    <div class="text-lg font-semibold mb-4 flex items-center">
+      <i class="fa fa-users text-primary mr-2"></i>我的团队
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div class="glass p-3 rounded-xl text-center">
+        <div class="text-xs text-gray-400">团队人数</div>
+        <div id="teamCount" class="text-xl font-bold mt-1">0</div>
+      </div>
+      <div class="glass p-3 rounded-xl text-center">
+        <div class="text-xs text-gray-400">团队总质押</div>
+        <div id="teamStake" class="text-xl font-bold mt-1">0 FCB</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="glass rounded-2xl p-5 mb-6 card-hover">
+    <div class="text-lg font-semibold mb-4 flex items-center">
+      <i class="fa fa-lock text-primary mr-2"></i>质押中心
+    </div>
+    <div class="glass p-4 rounded-xl mb-4 flex justify-between items-center">
+      <div class="text-sm text-gray-400">当前质押</div>
+      <div id="myStake" class="text-xl font-bold text-gradient">0 FCB</div>
+    </div>
+    <input id="stakeAmt" class="w-full glass rounded-xl px-4 py-3 mb-4 outline-none" placeholder="质押数量" type="number">
+    <div class="grid grid-cols-4 gap-2 mb-4">
+      <div class="period-btn bg-primary text-white text-center py-2 rounded-lg text-sm" data-day="7">7天</div>
+      <div class="period-btn glass text-center py-2 rounded-lg text-sm" data-day="30">30天</div>
+      <div class="period-btn glass text-center py-2 rounded-lg text-sm" data-day="90">90天</div>
+      <div class="period-btn glass text-center py-2 rounded-lg text-sm" data-day="180">180天</div>
+    </div>
+    <button id="stakeBtn" class="btn-primary w-full py-3 rounded-xl text-white font-medium mb-2">质押</button>
+    <button id="unstakeBtn" class="glass w-full py-3 rounded-xl text-sm">解除质押</button>
+  </div>
+
+  <div class="glass rounded-2xl p-5 mb-6 card-hover">
+    <div class="text-lg font-semibold mb-4 flex items-center">
+      <i class="fa fa-gift text-primary mr-2"></i>分红中心
+    </div>
+    <div class="grid grid-cols-2 gap-2 mb-3">
+      <div class="glass p-2 rounded-xl text-center">
+        <div class="text-xs text-gray-400">分红池</div>
+        <div id="poolTotal" class="text-sm font-semibold">0 USDT</div>
+      </div>
+      <div class="glass p-2 rounded-xl text-center">
+        <div class="text-xs text-gray-400">当期分红</div>
+        <div id="currentDiv" class="text-sm font-semibold">0 USDT</div>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-2 mb-4">
+      <div class="glass p-2 rounded-xl text-center">
+        <div class="text-xs text-gray-400">未领取</div>
+        <div id="unclaim" class="text-sm font-semibold text-emerald-400">0 USDT</div>
+      </div>
+      <div class="glass p-2 rounded-xl text-center">
+        <div class="text-xs text-gray-400">已领取</div>
+        <div id="claimed" class="text-sm font-semibold">0 USDT</div>
+      </div>
+    </div>
+    <button id="claimBtn" class="btn-accent w-full py-3 rounded-xl text-white font-medium">领取分红</button>
+  </div>
+
+  <!-- 商家收款 → 只加收款码，别的不动 -->
+  <div class="glass rounded-2xl p-5 mb-6 card-hover">
+    <div class="text-lg font-semibold mb-4 flex items-center">
+      <i class="fa fa-qrcode text-primary mr-2"></i>商家收款
+    </div>
+    <select id="payCoin" class="w-full glass rounded-xl px-4 py-3 mb-3 outline-none text-white">
+      <option value="FCB">FCB 支付</option>
+      <option value="USDT">USDT 支付</option>
+    </select>
+    <input id="receiveAmt" class="w-full glass rounded-xl px-4 py-3 mb-4 outline-none text-white" placeholder="输入收款金额" type="number">
+    <div class="flex justify-center">
+      <img id="qrcodeImg" class="w-44 h-44 bg-white rounded-2xl p-2" alt="收款码">
+    </div>
+  </div>
+
+  <div class="glass rounded-2xl p-5 card-hover">
+    <div class="text-lg font-semibold mb-4 flex items-center">
+      <i class="fa fa-camera text-primary mr-2"></i>扫码付款
+    </div>
+    <p class="text-gray-400 text-sm text-center mb-4">扫描商家收款码完成支付</p>
+    
+    <button id="scanPayBtn" class="btn-accent w-full py-3 rounded-xl text-white font-medium mb-2">
+      <i class="fa fa-camera mr-1"></i> 打开相机扫码
+    </button>
+    
+    <button id="galleryScanBtn" class="glass w-full py-3 rounded-xl text-white font-medium">
+      <i class="fa fa-picture-o mr-1"></i> 从相册选择二维码
+    </button>
+    <input type="file" id="galleryInput" accept="image/*" style="display:none;">
+  </div>
+
+</div>
+
+<script>
+const CONFIG = {
+  chainId: '0x61',
+  mainAddr: '0x2E851B3beA08F818b2d4Bf3812c067903dAEd6CE',
+  divAddr : '0xC70363Ef2fBd7bf9e41ED740E6b54e8F0ca8A572',
+  USDT: '0x78867BbEeF44f2326bF8DDd1941a4439382EF2A7',
+  mainABI: [
+    {"inputs":[{"internalType":"address","name":"spender","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
+    {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":false,"internalType":"address","name":"spender","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Approval","type":"event"},
+    {"inputs":[{"internalType":"address","name":"ref","type":"address"}],"name":"bind","outputs":[],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"internalType":"address","name":"shop","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"consume","outputs":[],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[],"name":"openTrading","outputs":[],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"internalType":"address","name":"pool","type":"address"}],"name":"setDividendPool","outputs":[],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"uint256","name":"days_","type":"uint256"}],"name":"stake","outputs":[],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
+    {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Transfer","type":"event"},
+    {"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[],"name":"unstake","outputs":[],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[{"internalType":"address","name":"owner","type":"address"},{"internalType":"address","name":"spender","type":"address"}],"name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"BASE_POOL","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"BASE_SELL_TAX","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"BURN","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"BUY_TAX","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"CONSUME_TAX","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"CONTRACT_POOL","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"DAY_SELL_RATE","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"daySold","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"decimals","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"dividendPool","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"FUSE_COOLDOWN","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"FUSE_MAX_TRADES","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"FUSE_WINDOW","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"isBound","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"isCounted","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"lastSellDay","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"lastSellTime","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"level","outputs":[{"internalType":"enum FreeCityBeer.Level","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"LVL1","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"LVL2","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"LVL3","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"LVL4","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"OWNER","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"OWNER_COOLDOWN","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"OWNER_MAX_SELL","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"RATE_180","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"RATE_30","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"RATE_7","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"RATE_90","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"referrer","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"router","outputs":[{"internalType":"contract IPancakeSwapRouter","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"ROUTER","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"uint256","name":"","type":"uint256"}],"name":"sellTimestamps","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"STAKE_MIN","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"TAX_TO_BASE","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"TAX_TO_BURN","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"TAX_TO_DIV","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"TAX_TO_LP","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"TAX_TO_OWNER","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"TEAM_SIZE_LDR","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"TEAM_SIZE_MGR","outputs":[{"internalType":"uint256","name","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"TEAM_STAKE_LDR","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"TEAM_STAKE_MGR","outputs":[{"internalType":"uint256","name","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"teamSize","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"teamStake","outputs":[{"internalType":"uint256","name","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"TOTAL_SUPPLY","outputs":[{"internalType":"uint256","name","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"totalDivWeight","outputs":[{"internalType":"uint256","name","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"tradingOpen","outputs":[{"internalType":"bool","name","type":"bool"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"UNSTAKE_TAX","outputs":[{"internalType":"uint256","name","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"USDT","outputs":[{"internalType":"address","name","type":"address"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"address","name","type":"address"}],"name":"userStakes","outputs":[{"internalType":"uint256","name":"amount","type":"uint256"},{"internalType":"uint256","name":"weight","type":"uint256"},{"internalType":"uint256","name":"startTime","type":"uint256"},{"internalType":"uint256","name":"lockDays","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"W_LEADER","outputs":[{"internalType":"uint256","name","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"W_MANAGER","outputs":[{"internalType":"uint256","name","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"W_MEMBER","outputs":[{"internalType":"uint256","name","type":"uint256"}],"stateMutability":"view","type":"function"}
+  ],
+  divABI: [{"inputs":[{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"addDividendUSDT","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"claimDividend","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"amount","type":"uint256"}],"name":"emergencyWithdraw","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"inputs":[],"name":"divPerWeight","outputs":[{"internalType":"uint256","name","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MAIN_CONTRACT","outputs":[{"internalType":"address","name","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"user","type":"address"}],"name":"pendingDividend","outputs":[{"internalType":"uint256","name","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalDividendUSDT","outputs":[{"internalType":"uint256","name","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"USDT","outputs":[{"internalType":"address","name","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name","type":"address"}],"name":"userClaimed","outputs":[{"internalType":"uint256","name","type":"uint256"}],"stateMutability":"view","type":"function"}]
+}
+
+let provider, signer, userAddr, mainContract, divContract;
+let lockDay = 7;
+
+// 连接钱包 —— 完全不变
+document.getElementById('connectBtn').onclick = async () => {
+  if (!window.ethereum) {
+    alert('请在 TokenPocket 钱包内打开');
+    return;
+  }
+  try {
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+    await provider.send("eth_requestAccounts", []);
+    signer = provider.getSigner();
+    userAddr = await signer.getAddress();
+    document.getElementById('connectBtn').innerText = '已连接';
+
+    mainContract = new ethers.Contract(CONFIG.mainAddr, CONFIG.mainABI, signer);
+    divContract = new ethers.Contract(CONFIG.divAddr, CONFIG.divABI, signer);
+    loadAllData();
+
+    // 只加这一句：连接钱包后自动生成收款码
+    makeQrcode();
+  } catch (e) {
+    alert('连接钱包失败：' + e.message);
+  }
+};
+
+// 加载所有数据 —— 完全不变
+async function loadAllData() {
+  if (!userAddr) return;
+  try {
+    const bal = await mainContract.balanceOf(userAddr);
+    document.getElementById('fcbBalance').innerText = ethers.utils.formatEther(bal);
+
+    const level = await mainContract.level(userAddr);
+    const levelMap = {0:'Member',1:'Manager',2:'Leader',3:'Elite'}
+    document.getElementById('userLevel').innerText = levelMap[level] || 'Member';
+
+    const stakeInfo = await mainContract.userStakes(userAddr);
+    document.getElementById('myStake').innerText = ethers.utils.formatEther(stakeInfo.amount) + ' FCB';
+    document.getElementById('userWeight').innerText = stakeInfo.weight.toString();
+
+    const pending = await divContract.pendingDividend(userAddr);
+    document.getElementById('pendingDiv').innerText = ethers.utils.formatEther(pending) + ' USDT';
+    document.getElementById('unclaim').innerText = ethers.utils.formatEther(pending) + ' USDT';
+
+    const claimed = await divContract.userClaimed(userAddr);
+    document.getElementById('claimed').innerText = ethers.utils.formatEther(claimed) + ' USDT';
+
+    const totalPool = await divContract.totalDividendUSDT();
+    document.getElementById('poolTotal').innerText = ethers.utils.formatEther(totalPool) + ' USDT';
+
+    const ref = await mainContract.referrer(userAddr);
+    document.getElementById('myReferrer').innerText = ref == ethers.constants.AddressZero ? '无' : ref;
+
+    const teamSize = await mainContract.teamSize(userAddr);
+    document.getElementById('teamCount').innerText = teamSize.toString();
+
+    const teamStake = await mainContract.teamStake(userAddr);
+    document.getElementById('teamStake').innerText = ethers.utils.formatEther(teamStake) + ' FCB';
+  } catch (e) { console.log("加载数据出错", e); }
+}
+
+// 质押 —— 不变
+document.querySelectorAll('.period-btn').forEach(el => {
+  el.onclick = () => {
+    document.querySelectorAll('.period-btn').forEach(e => {
+      e.classList.remove('bg-primary');
+      e.classList.add('glass');
+    });
+    el.classList.remove('glass');
+    el.classList.add('bg-primary', 'text-white');
+    lockDay = parseInt(el.dataset.day);
+  }
+});
+
+document.getElementById('stakeBtn').onclick = async () => {
+  const amt = document.getElementById('stakeAmt').value;
+  if (!amt || amt <= 0) return alert('请输入数量');
+  try {
+    const val = ethers.utils.parseEther(amt);
+    const tx = await mainContract.stake(val, lockDay);
+    await tx.wait();
+    alert('质押成功');
+    loadAllData();
+  } catch (e) { alert('失败：' + e.message); }
+};
+
+document.getElementById('unstakeBtn').onclick = async () => {
+  try {
+    const tx = await mainContract.unstake();
+    await tx.wait();
+    alert('解除质押成功');
+    loadAllData();
+  } catch (e) { alert('失败：' + e.message); }
+};
+
+// 领取分红 —— 不变
+document.getElementById('claimBtn').onclick = async () => {
+  try {
+    const tx = await divContract.claimDividend();
+    await tx.wait();
+    alert('领取成功');
+    loadAllData();
+  } catch (e) { alert('失败：' + e.message); }
+};
+
+// 推荐 —— 不变
+document.getElementById('myLink').onclick = () => {
+  const link = location.origin + location.pathname + '?ref=' + userAddr;
+  navigator.clipboard.writeText(link);
+  alert('复制成功：' + link);
+};
+
+document.getElementById('bindRefBtn').onclick = async () => {
+  const refAddr = document.getElementById('refInput').value.trim();
+  if (!ethers.utils.isAddress(refAddr)) {
+    alert('请输入有效的以太坊地址');
+    return;
+  }
+  if (refAddr.toLowerCase() === userAddr.toLowerCase()) {
+    alert('不能绑定自己作为推荐人');
+    return;
+  }
+  try {
+    const tx = await mainContract.bind(refAddr);
+    await tx.wait();
+    alert('绑定推荐人成功');
+    loadAllData();
+    document.getElementById('refInput').value = '';
+  } catch (e) { alert('绑定失败：' + e.message); }
+};
+
+// =====================================================================
+// 只在这里加收款码自动生成，别的一概不动！
+// =====================================================================
+function makeQrcode() {
+  if (!userAddr) return;
+  const img = document.getElementById('qrcodeImg');
+  const coin = document.getElementById('payCoin').value;
+  const amt = document.getElementById('receiveAmt').value;
+  if (!amt || amt <= 0) {
+    img.src = '';
+    return;
+  }
+  const text = `${userAddr}|${coin}|${amt}`;
+  QRCode.toDataURL(text, { width: 160, margin: 2 }, (err, url) => {
+    if (!err) img.src = url;
+  });
+}
+
+window.addEventListener('load', () => {
+  const receiveAmt = document.getElementById('receiveAmt');
+  const payCoin = document.getElementById('payCoin');
+  receiveAmt.addEventListener('input', makeQrcode);
+  payCoin.addEventListener('change', makeQrcode);
+});
+
+// =====================================================================
+// 扫码付款 —— 完全不变
+// =====================================================================
+let video, canvas, ctx, scanOverlay;
+
+document.getElementById('scanPayBtn').onclick = async () => {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    alert('设备不支持相机');
+    return;
+  }
+  video = document.createElement('video');
+  canvas = document.createElement('canvas');
+  ctx = canvas.getContext('2d');
+  video.style.position = 'fixed';
+  video.style.top = '0';
+  video.style.left = '0';
+  video.style.width = '100%';
+  video.style.height = '100%';
+  video.style.objectFit = 'cover';
+  video.style.zIndex = '9999';
+
+  scanOverlay = document.createElement('div');
+  scanOverlay.style.position = 'fixed';
+  scanOverlay.style.top = '50%';
+  scanOverlay.style.left = '50%';
+  scanOverlay.style.transform = 'translate(-50%, -50%)';
+  scanOverlay.style.width = '260px';
+  scanOverlay.style.height = '260px';
+  scanOverlay.style.border = '3px solid #6366f1';
+  scanOverlay.style.borderRadius = '16px';
+  scanOverlay.style.zIndex = '10000';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.innerText = '关闭';
+  closeBtn.style.position = 'fixed';
+  closeBtn.style.bottom = '60px';
+  closeBtn.style.left = '50%';
+  closeBtn.style.transform = 'translateX(-50%)';
+  closeBtn.style.padding = '12px 30px';
+  closeBtn.style.background = '#6366f1';
+  closeBtn.style.color = '#fff';
+  closeBtn.style.border = 'none';
+  closeBtn.style.borderRadius = '10px';
+  closeBtn.style.zIndex = '10000';
+  closeBtn.onclick = stopScan;
+
+  document.body.appendChild(video);
+  document.body.appendChild(scanOverlay);
+  document.body.appendChild(closeBtn);
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    video.srcObject = stream;
+    await video.play();
+    scanLoop();
+  } catch (e) {
+    alert('相机打开失败，请允许相机权限');
+    stopScan();
+  }
+};
+
+function scanLoop() {
+  if (!video || !canvas) return;
+  if (video.videoWidth < 10) { requestAnimationFrame(scanLoop); return; }
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const code = jsQR(imageData.data, imageData.width, imageData.height);
+  if (code && code.data) {
+    handleScanResult(code.data);
+    stopScan();
+    return;
+  }
+  requestAnimationFrame(scanLoop);
+}
+
+function stopScan() {
+  if (video && video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
+  if (video) video.remove();
+  if (scanOverlay) scanOverlay.remove();
+  document.querySelector('button[style*="bottom: 60px"]')?.remove();
+  video = null; canvas = null; ctx = null; scanOverlay = null;
+}
+
+document.getElementById('galleryScanBtn').onclick = () => {
+  document.getElementById('galleryInput').click();
+};
+
+document.getElementById('galleryInput').onchange = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    const img = new Image();
+    img.onload = () => {
+      const cvs = document.createElement('canvas');
+      const c = cvs.getContext('2d');
+      cvs.width = img.width; cvs.height = img.height;
+      c.drawImage(img,0,0);
+      const idata = c.getImageData(0,0,cvs.width,cvs.height);
+      const code = jsQR(idata.data, cvs.width, cvs.height);
+      if (code && code.data) {
+        handleScanResult(code.data);
+      } else {
+        alert('未识别到二维码');
+      }
+    };
+    img.src = evt.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+
+function handleScanResult(codeStr) {
+  try {
+    const arr = codeStr.split('|');
+    if (arr.length !== 3) {
+      alert('无效的收款码');
+      return;
+    }
+    const toAddr = arr[0];
+    const coin = arr[1];
+    const amountStr = arr[2];
+
+    if (!ethers.utils.isAddress(toAddr) || !coin || !amountStr) {
+      alert('收款码信息错误');
+      return;
+    }
+
+    if (confirm(`确认支付：${amountStr} ${coin}？`)) {
+      doPay(toAddr, coin, amountStr);
+    }
+  } catch (e) {
+    alert('扫码解析失败');
+  }
+}
+
+async function doPay(toAddr, coin, amountStr) {
+  try {
+    if (coin === 'FCB') {
+      const amount = ethers.utils.parseEther(amountStr);
+      const tx = await mainContract.transfer(toAddr, amount);
+      await tx.wait();
+      alert('FCB 支付成功！');
+    } else if (coin === 'USDT') {
+      const usdtContract = new ethers.Contract(CONFIG.USDT, [
+        "function transfer(address to, uint amount) returns (bool)"
+      ], signer);
+      const amount = ethers.utils.parseUnits(amountStr, 6);
+      const tx = await usdtContract.transfer(toAddr, amount);
+      await tx.wait();
+      alert('USDT 支付成功！');
+    }
+    loadAllData();
+  } catch (e) {
+    alert('支付失败：' + e.message);
+  }
+}
+
+setInterval(loadAllData, 10000);
+</script>
+</body>
+</html>
